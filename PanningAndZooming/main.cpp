@@ -21,6 +21,39 @@ public:
 		return olc::vi2d((float)ScreenWidth() * (WorldPos * olc::vf2d(1.0f,-1.0f) - offset) * scale);
 	}
 
+	void handlePanning()
+	{
+		if (GetMouse(0).bHeld)
+		{
+			if (GetMouse(0).bPressed)
+			{
+				PanPixelMousePos = GetMousePos();
+				PanInitialOffset = offset;
+			}
+
+			offset = PanInitialOffset + olc::vf2d(PanPixelMousePos - GetMousePos()) / (scale * float(ScreenWidth()));
+		}
+	}
+
+	void handleZooming()
+	{
+		int mouseWheel = GetMouseWheel();
+
+		if (mouseWheel != 0)
+		{
+			if (mouseWheel < 0)
+			{
+				scale *= 0.95f;
+				offset = offset - (olc::vf2d(GetMousePos()) / float(ScreenWidth()) / scale) * 0.05f;
+			}
+			else
+			{
+				scale *= 1.05f;
+				offset = offset + (olc::vf2d(GetMousePos()) / float(ScreenWidth()) / scale) * 0.05f;
+			}
+		}
+	}
+
 	void drawCornerWorldPos()
 	{
 		DrawString(1, ScreenHeight()-9, std::to_string(PixelToWorld({0,ScreenHeight() }).x) + ", " + std::to_string(PixelToWorld({0,ScreenHeight() }).y));
@@ -33,18 +66,19 @@ public:
 	olc::vf2d offset;
 
 	olc::vf2d ZoomWorldMousePos;
-	olc::vf2d PanPixelMousePos;
+	olc::vi2d PanPixelMousePos;
 	olc::vf2d PanInitialOffset;
 
+
 	float aspectRatio;
+	olc::vf2d exampleCirclePos;
 
 	bool OnUserCreate() override
 	{
 		offset = { -0.5f, -float(ScreenHeight()) / float(2 * ScreenWidth()) };
 
 		aspectRatio = float(ScreenHeight()) / float(ScreenWidth());
-
-		std::cout << PixelToWorld({ 0,ScreenHeight() }).y << "\n";
+		exampleCirclePos = { 0.0f,0.0f }; 
 
 		drawCornerWorldPos();
 		return true;
@@ -52,39 +86,16 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-		if(GetMouseWheel() != 0)
-			std::cout << GetMouseWheel() << "\n";
-
+		handleZooming();
 		if (GetKey(olc::Key::CTRL).bHeld)
+			handlePanning();
+		else
 		{
-			if (GetMouse(0).bHeld)
+			if(GetMouse(0).bPressed)
 			{
-				if (GetMouse(0).bPressed)
-				{
-					PanPixelMousePos = GetMousePos();
-					PanInitialOffset = offset;
-				}
-
-				offset = PanInitialOffset + olc::vf2d(PanPixelMousePos - GetMousePos()) / (scale * float(ScreenWidth()));
+				exampleCirclePos = PixelToWorld(GetMousePos());
+				std::cout << exampleCirclePos.x << " " << exampleCirclePos.y << "\n";
 			}
-
-			if (GetMouse(1).bHeld)
-			{
-				if (GetMouse(1).bPressed)
-					ZoomWorldMousePos = olc::vf2d(GetMousePos()) / float(ScreenWidth()) / scale + offset;
-
-				if (GetKey(olc::Key::SHIFT).bHeld)
-				{
-					scale *= 0.999f;
-					offset = offset - (ZoomWorldMousePos - offset) * 0.001f;
-				}
-				else
-				{
-					scale *= 1.001f;
-					offset = offset + (ZoomWorldMousePos - offset) * 0.001f;
-				}
-			}
-			
 		}
 		
 		Clear(olc::BLACK);
@@ -92,7 +103,8 @@ public:
 		DrawLine(WorldToPixel({ -0.5,0.0f }), WorldToPixel({ 0.5f, 0.0f }));
 		DrawLine(WorldToPixel({ 0.0f,-aspectRatio/2.0f }), WorldToPixel({ 0.0f, aspectRatio/2.0f }));
 		DrawTriangle(WorldToPixel({ 0.0f, 0.0f }), WorldToPixel({ 0.5f, 0.1f }), WorldToPixel({ 0.3f, 0.4f }));
-		FillCircle(WorldToPixel({ -0.2f, 0.25f }), 5 * scale);
+		FillCircle(WorldToPixel({-0.2f, 0.2f}), 4 * scale);
+		FillCircle(WorldToPixel(exampleCirclePos), 5 * scale);
 
 		drawCornerWorldPos();
 
